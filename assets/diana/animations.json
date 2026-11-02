@@ -1,0 +1,59 @@
+{
+  "fps": 30,
+  "units": "meters",
+  "in_place": true,
+  "clips": [
+    {
+      "name": "Idle",
+      "start_frame": 1,
+      "end_frame": 97,
+      "duration_seconds": 3.2,
+      "loop": true,
+      "file": "Diana-idle.usdz"
+    },
+    {
+      "name": "Run",
+      "start_frame": 1,
+      "end_frame": 25,
+      "duration_seconds": 0.8,
+      "loop": true,
+      "file": "Diana-run.usdz"
+    },
+    {
+      "name": "Wave",
+      "start_frame": 1,
+      "end_frame": 91,
+      "duration_seconds": 3.0,
+      "loop": false,
+      "file": "Diana-wave.usdz"
+    },
+    {
+      "name": "Kiss",
+      "start_frame": 1,
+      "end_frame": 67,
+      "duration_seconds": 2.2,
+      "loop": false,
+      "file": "Diana-kiss.usdz"
+    },
+    {
+      "name": "Portrait",
+      "start_frame": 1,
+      "end_frame": 151,
+      "duration_seconds": 5.0,
+      "loop": false,
+      "file": "Diana-portrait.usdz"
+    },
+    {
+      "name": "Hip",
+      "start_frame": 1,
+      "end_frame": 151,
+      "duration_seconds": 5.0,
+      "loop": false,
+      "file": "Diana-hip.usdz"
+    }
+  ],
+  "notes": [
+    "Rebuilt constrained limbs, grounded stance, opposite arm/leg run, kiss and reference-inspired poses; no cloth or hair simulation.",
+    "USDZ files contain one clip each. GLB and Blender source contain named actions."
+  ]
+}

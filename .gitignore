@@ -1,0 +1,38 @@
+# Build output
+.build/
+build/
+.swiftpm/
+.DS_Store
+**/__pycache__/
+
+# Local agent files, recordings, logs, and signing settings
+.Codex/
+*.log
+*.caf
+*.wav
+*.aiff
+*.trace
+
+# Credentials and local app data
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+**/reminders.json
+**/*-backup.json
+
+# Original and working art files; runtime USDZ assets are in Sources/
+/Diana.blend
+*.blend1
+*.blend2
+/assets/diana/*
+!/assets/diana/README.md
+!/assets/diana/animations.json
