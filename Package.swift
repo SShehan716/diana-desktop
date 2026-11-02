@@ -1,4 +1,5 @@
 // swift-tools-version: 6.0
+
 import PackageDescription
 
 let package = Package(
@@ -7,4 +8,5 @@ let package = Package(
         .target(name: "DianaCore"),
         .executableTarget(name: "DianaApp", dependencies: ["DianaCore"], resources: [.copy("Resources")]),
         .testTarget(name: "DianaCoreTests", dependencies: ["DianaCore"]),
+        .testTarget(name: "DianaAppTests", dependencies: ["DianaApp"]),
     ])

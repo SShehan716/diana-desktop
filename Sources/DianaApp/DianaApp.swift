@@ -35,11 +35,15 @@ import SwiftUI
                             get: { model.preferences.companionVisible },
                             set: { model.preferences.companionVisible = $0 }))
                     Button("Say Hello") { model.sayHello() }
+                    Button("Talk to Diana") { model.startVoiceConversation() }.keyboardShortcut(
+                        "t", modifiers: [.command, .shift])
                     Toggle(
                         "Listen for Hey Diana",
                         isOn: Binding(
                             get: { model.voiceAssistant.isEnabled },
                             set: { model.setVoiceAssistantEnabled($0) }))
+                    Button("End Conversation") { model.stopSpeaking() }.disabled(
+                        !model.voiceAssistant.isActive && model.voiceAssistant.status != .enabling)
                     Button("Focus Desktop Companion") { model.onFocusPet?() }.keyboardShortcut(
                         "d", modifiers: [.command, .shift])
 
@@ -70,10 +74,13 @@ import SwiftUI
                     get: { model.preferences.companionVisible },
                     set: { model.preferences.companionVisible = $0 }))
             Button("Say Hello") { model.sayHello() }
+            Button("Talk to Diana") { model.startVoiceConversation() }
             Toggle(
                 "Listen for Hey Diana",
                 isOn: Binding(
                     get: { model.voiceAssistant.isEnabled }, set: { model.setVoiceAssistantEnabled($0) }))
+            Button("End Conversation") { model.stopSpeaking() }.disabled(
+                !model.voiceAssistant.isActive && model.voiceAssistant.status != .enabling)
             Button("Return to Corner") { model.onReposition?() }
             Divider()
             Button("Quit Diana") {

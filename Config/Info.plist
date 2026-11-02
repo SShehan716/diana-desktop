@@ -8,10 +8,10 @@
     <key>CFBundleIdentifier</key><string>com.sachin.diana</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleVersion</key><string>2</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
-    <key>NSMicrophoneUsageDescription</key><string>Diana listens for Hey Diana and your spoken reminder requests while voice control is enabled.</string>
+    <key>NSMicrophoneUsageDescription</key><string>Diana listens for Hey Diana while wake-word listening is enabled, and hears your request and confirmation during voice conversations. Turn off Listen for Hey Diana to stop background microphone use.</string>
     <key>NSSpeechRecognitionUsageDescription</key><string>Diana transcribes your voice to prepare reminders and hear your confirmation before saving them. Apple speech recognition may use its servers when on-device recognition is unavailable.</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>

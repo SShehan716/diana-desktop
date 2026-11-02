@@ -60,7 +60,12 @@ Say **“Bye”** or **“Bye Diana”** while she is listening to discard an un
 draft and dismiss the visit. Wake-word listening resumes afterward. Recognition
 pauses while Diana speaks to avoid processing her own voice.
 
-The microphone stays active while wake listening is enabled. English recognition
+The microphone stays active while wake listening is enabled, so macOS shows its
+orange microphone indicator. Turning off **Listen for Hey Diana** releases it.
+You can still start a single conversation using **Talk to Diana** in Settings or
+the menu bar, or **Command–Shift–T** while Diana is the active app. A listening
+turn times out after 25 seconds without a reply. **End conversation** discards
+an unconfirmed draft; wake listening resumes if enabled. English recognition
 runs on-device when supported; otherwise Apple may process audio online. Audio
 is not sent to Ollama. Voice requests create reminders in Diana, not calendar
 invitations.
@@ -106,6 +111,7 @@ xcrun swift-format lint --strict --recursive Sources Tests Package.swift scripts
 - `Sources/DianaApp/`: SwiftUI views, desktop panel, rendering, speech, and notifications.
 - `Sources/DianaCore/`: models, recurrence, persistence, conflict detection, voice parsing, and Ollama client.
 - `Tests/DianaCoreTests/`: unit tests for scheduling, persistence, speech text, conflicts, and confirmation rules.
+- `Tests/DianaAppTests/`: wake listening and microphone lifecycle tests using simulated input.
 - `Config/`: application metadata and icon.
 - `scripts/`: app packaging and icon generation.
 - `Sources/DianaApp/Resources/Models/`: runtime character animations.

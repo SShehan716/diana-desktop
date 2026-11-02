@@ -14,11 +14,12 @@ import Observation
     var problem: String?
     var usesOnDeviceRecognition = false
     private var conversation = VoiceConversation()
-    @ObservationIgnored private let microphone = MicrophoneRecognizer()
+    @ObservationIgnored private let microphone: any VoiceInput
+    @ObservationIgnored private let replyTimeout: Duration
     @ObservationIgnored private var silenceTask: Task<Void, Never>?
     @ObservationIgnored private var timeoutTask: Task<Void, Never>?
+    @ObservationIgnored private var listeningTask: Task<Void, Never>?
     @ObservationIgnored private var rotationTask: Task<Void, Never>?
-    @ObservationIgnored private var retryTask: Task<Void, Never>?
     @ObservationIgnored private var turnID = UUID()
     @ObservationIgnored private var sessionID = UUID()
     @ObservationIgnored private var failedStarts = 0
@@ -30,64 +31,95 @@ import Observation
     @ObservationIgnored var onFarewell: (() -> Void)?
     @ObservationIgnored var onCompanionVisible: (() -> Bool)?
     @ObservationIgnored var onEnabledChanged: ((Bool) -> Void)?
+
+    init(microphone: any VoiceInput = MicrophoneRecognizer(), replyTimeout: Duration = .seconds(25)) {
+        self.microphone = microphone
+        self.replyTimeout = replyTimeout
+    }
+
     var statusLabel: String {
         switch status {
-        case .off: "Voice control is off"
+        case .off: "Microphone off"
         case .enabling: "Requesting microphone and speech access…"
         case .waiting: "Listening for Hey Diana"
         case .arriving: "Diana is on her way"
-        case .speaking: "Diana is speaking"
+        case .speaking: "Diana is speaking · microphone off"
         case .listening: "Listening for your request"
         case .confirming: "Listening for yes, a correction, or cancel"
         case .saving: "Saving your confirmed reminder"
-        case .error: "Voice control needs attention"
+        case .error: "Voice control needs attention · microphone off"
         }
     }
+
     func configure() {
         microphone.onText = { [weak self] text, final in self?.receive(text, final: final) }
         microphone.onError = { [weak self] error in self?.recognitionFailed(error) }
     }
+
     func enable(requestPermission: Bool) async {
-        guard !isEnabled && status != .enabling else { return }
+        guard !isEnabled, !isActive, status != .enabling else { return }
+        endSession(resumeWakeListening: false)
         status = .enabling
         problem = nil
+        let session = sessionID
         let allowed = requestPermission ? await microphone.requestPermissions() : microphone.hasPermissions
+        guard sessionID == session, status == .enabling else { return }
         guard allowed else {
             status = .error
             problem = VoiceCaptureError.permission.localizedDescription
             onEnabledChanged?(false)
             return
         }
-        isEnabled = true
         usesOnDeviceRecognition = microphone.usesOnDeviceRecognition
+        isEnabled = true
         onEnabledChanged?(true)
         startWakeListening()
     }
+
     func disable() {
         isEnabled = false
         endSession()
-        microphone.stop()
-        retryTask?.cancel()
-        status = .off
         problem = nil
         onEnabledChanged?(false)
     }
+
+    func beginConversation() async {
+        guard !isActive, status != .enabling else { return }
+        endSession(resumeWakeListening: false)
+        status = .enabling
+        problem = nil
+        let session = sessionID
+        let allowed = await microphone.requestPermissions()
+        guard sessionID == session, status == .enabling else { return }
+        guard allowed else {
+            status = .error
+            problem = VoiceCaptureError.permission.localizedDescription
+            onChange?()
+            return
+        }
+        usesOnDeviceRecognition = microphone.usesOnDeviceRecognition
+        activate(suffix: "")
+    }
+
     func pauseRecognition() {
         turnID = UUID()
         microphone.stop()
         silenceTask?.cancel()
         timeoutTask?.cancel()
+        listeningTask?.cancel()
         rotationTask?.cancel()
-        retryTask?.cancel()
     }
+
     func pauseForSpeech() {
         pauseRecognition()
         if isEnabled && !isActive { status = .speaking }
     }
+
     func resumeAfterExternalSpeech() {
         guard isEnabled && !isActive else { return }
         startWakeListening()
     }
+
     private func startWakeListening() {
         guard isEnabled && !isActive else { return }
         pauseRecognition()
@@ -101,10 +133,11 @@ import Observation
                 self?.startWakeListening()
             }
         } catch { recognitionFailed(error.localizedDescription) }
+        onChange?()
     }
+
     private func receive(_ text: String, final: Bool) {
-        guard isEnabled else { return }
-        if status == .waiting {
+        if isEnabled && status == .waiting {
             failedStarts = 0
             if VoiceScheduleParser.endsWithFarewell(text) {
                 if onCompanionVisible?() == true {
@@ -123,7 +156,7 @@ import Observation
             }
             return
         }
-        guard status == .listening || status == .confirming else { return }
+        guard isActive, status == .listening || status == .confirming else { return }
         transcript = text
         silenceTask?.cancel()
         let turn = turnID
@@ -133,6 +166,7 @@ import Observation
             self.acceptUtterance(text)
         }
     }
+
     private func activate(suffix: String) {
         pauseRecognition()
         sessionID = UUID()
@@ -144,26 +178,28 @@ import Observation
         if case .prompt(let greeting) = conversation.wake() { prompt = greeting }
         onChange?()
     }
+
     func didArrive() {
         guard isActive && status == .arriving else { return }
         say(prompt) { [weak self] in
             guard let self else { return }
-            if !self.wakeCommand.isEmpty {
+            if self.wakeCommand.isEmpty {
+                self.listenForTurn()
+            } else {
                 let command = self.wakeCommand
                 self.wakeCommand = ""
                 self.acceptUtterance(command)
-            } else {
-                self.listenForTurn()
             }
         }
     }
+
     private func listenForTurn() {
-        guard isActive && isEnabled else { return }
+        guard isActive else { return }
         pauseRecognition()
         transcript = ""
         status = conversation.phase == .confirming ? .confirming : .listening
         let turn = turnID
-        retryTask = Task { @MainActor [weak self] in
+        listeningTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled, let self, self.turnID == turn else { return }
             do { try self.microphone.start() } catch {
@@ -171,13 +207,15 @@ import Observation
                 return
             }
             self.timeoutTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(25))
+                guard let timeout = self?.replyTimeout else { return }
+                try? await Task.sleep(for: timeout)
                 guard !Task.isCancelled, let self, self.turnID == turn else { return }
                 self.finish("I didn’t hear a reply. Nothing was saved.")
             }
         }
         onChange?()
     }
+
     private func acceptUtterance(_ text: String) {
         guard isActive else { return }
         pauseRecognition()
@@ -198,55 +236,65 @@ import Observation
         case .ignore: break
         }
     }
+
     private func say(_ text: String, then: @escaping () -> Void) {
         pauseRecognition()
         prompt = text
         status = .speaking
         onChange?()
         let session = sessionID
-        onSpeak?(text) { [weak self] in
+        guard let onSpeak else {
+            endSession()
+            return
+        }
+        onSpeak(text) { [weak self] in
             guard let self, self.isActive, self.sessionID == session else { return }
             then()
         }
     }
+
     private func finish(_ message: String) {
         conversation.cancel()
-        say(message) { [weak self] in
-            self?.endSession()
-            self?.startWakeListening()
-        }
+        say(message) { [weak self] in self?.endSession() }
     }
+
     func cancel() {
         guard isActive else { return }
         finish("Okay, nothing else was saved.")
     }
-    func endSession() {
+
+    func endSession(resumeWakeListening: Bool = true) {
         pauseRecognition()
         sessionID = UUID()
         conversation.cancel()
         isActive = false
+        status = .off
+        prompt = ""
         transcript = ""
         wakeCommand = ""
+        if resumeWakeListening { startWakeListening() }
         onChange?()
     }
+
     private func recognitionFailed(_ message: String) {
-        guard isEnabled else { return }
         if isActive {
             problem = message
             finish("I couldn’t hear that clearly. Nothing was saved. Please try again.")
-        } else {
+        } else if isEnabled {
             pauseRecognition()
             failedStarts += 1
             guard failedStarts < 3 else {
+                isEnabled = false
                 status = .error
                 problem = message
-                isEnabled = false
                 onEnabledChanged?(false)
+                onChange?()
                 return
             }
-            retryTask = Task { @MainActor [weak self] in
+            listeningTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(2))
-                if !Task.isCancelled { self?.startWakeListening() }
+                guard !Task.isCancelled else { return }
+                self?.startWakeListening()
             }
         }
     }

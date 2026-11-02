@@ -117,6 +117,9 @@ enum PetMotion: String, CaseIterable, Identifiable {
         voiceAssistant.onCompanionVisible = { [weak self] in
             self?.visitPhase == .entering || self?.visitPhase == .presenting
         }
+        voiceAssistant.onEnabledChanged = { [weak self] value in
+            self?.preferences.voiceAssistantEnabled = value
+        }
         voiceAssistant.onFarewell = { [weak self] in
             guard let self else { return }
             self.greetingTask?.cancel()
@@ -125,9 +128,6 @@ enum PetMotion: String, CaseIterable, Identifiable {
             self.activeReminder = nil
             self.petGreeting = nil
             self.reminderAside = nil
-        }
-        voiceAssistant.onEnabledChanged = { [weak self] value in
-            self?.preferences.voiceAssistantEnabled = value
         }
         speechObserver.onFinished = { [weak self] id in
             guard let self, self.spokenUtteranceID == id else { return }
@@ -530,8 +530,10 @@ enum PetMotion: String, CaseIterable, Identifiable {
         speech.speak(utterance)
     }
     func stopSpeaking() {
-        if voiceAssistant.isActive { voiceAssistant.endSession() }
+        speechCompletion = nil
+        spokenUtteranceID = nil
         speech.stopSpeaking(at: .immediate)
+        voiceAssistant.endSession()
     }
     func setVoiceAssistantEnabled(_ enabled: Bool) {
         if enabled {
@@ -541,6 +543,14 @@ enum PetMotion: String, CaseIterable, Identifiable {
             speechCompletion = nil
             spokenUtteranceID = nil
             speech.stopSpeaking(at: .immediate)
+        }
+    }
+    func startVoiceConversation() {
+        guard !voiceAssistant.isActive, voiceAssistant.status != .enabling else { return }
+        stopSpeaking()
+        Task {
+            await voiceAssistant.beginConversation()
+            if let problem = voiceAssistant.problem { errorMessage = problem }
         }
     }
     private func commitVoiceReminder(_ reminder: Reminder, approvedConflicts: Set<String>) -> Bool {

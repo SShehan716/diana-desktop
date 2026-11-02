@@ -7,8 +7,18 @@ private final class SpeechBufferSink: @unchecked Sendable {
     func append(_ buffer: AVAudioPCMBuffer) { request.append(buffer) }
 }
 
-@MainActor final class MicrophoneRecognizer {
-    private let engine = AVAudioEngine()
+@MainActor protocol VoiceInput: AnyObject {
+    var onText: ((String, Bool) -> Void)? { get set }
+    var onError: ((String) -> Void)? { get set }
+    var usesOnDeviceRecognition: Bool { get }
+    var hasPermissions: Bool { get }
+    func requestPermissions() async -> Bool
+    func start() throws
+    func stop()
+}
+
+@MainActor final class MicrophoneRecognizer: VoiceInput {
+    private var engine: AVAudioEngine?
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en_US"))
     private var task: SFSpeechRecognitionTask?
     private var request: SFSpeechAudioBufferRecognitionRequest?
@@ -50,7 +60,7 @@ private final class SpeechBufferSink: @unchecked Sendable {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
-        request.contextualStrings = ["Hey Diana", "schedule a meeting", "yes save it", "cancel"]
+        request.contextualStrings = ["Hey Diana", "schedule a meeting", "yes save it", "cancel", "bye Diana"]
         request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
         self.request = request
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
@@ -63,6 +73,8 @@ private final class SpeechBufferSink: @unchecked Sendable {
                 if let message, self.sessionID == session { self.onError?(message) }
             }
         }
+        let engine = AVAudioEngine()
+        self.engine = engine
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
@@ -83,11 +95,12 @@ private final class SpeechBufferSink: @unchecked Sendable {
     }
     func stop() {
         sessionID = UUID()
-        engine.stop()
+        engine?.stop()
         if tapInstalled {
-            engine.inputNode.removeTap(onBus: 0)
+            engine?.inputNode.removeTap(onBus: 0)
             tapInstalled = false
         }
+        engine = nil
         request?.endAudio()
         task?.cancel()
         task = nil
