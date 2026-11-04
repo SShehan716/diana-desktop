@@ -118,3 +118,11 @@ xcrun swift-format lint --strict --recursive Sources Tests Package.swift scripts
 
 Use four-space indentation and the committed `.swift-format` configuration.
 See [asset documentation](assets/diana/README.md) for clip details.
+
+## Contributing
+
+Contributions are welcome. Fork the repository, make your change, and open a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Diana is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may use, fork, modify, and share it for noncommercial purposes. Selling it, or using it or any derivative for commercial purposes, is not permitted. This is not an OSI-approved open-source license.
