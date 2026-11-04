@@ -96,9 +96,10 @@ Reminders and preferences are stored in
 unreadable file is preserved. Settings provides backup export and reminder import;
 imports merge new reminder IDs without replacing existing schedules.
 
-Local data, signing identities, credentials, recordings, logs, agent files,
-original Blender files, and build products are excluded from Git. The repository
-contains the six USDZ assets needed to build the app.
+Local data, signing identities, credentials, recordings, logs, local agent
+settings in `.Codex/`, original Blender files, and build products are excluded
+from Git. The repository contains the six USDZ assets needed to build the app.
+`AGENTS.md` holds shared contributor and agent guidelines and is committed.
 
 ## Development
 
