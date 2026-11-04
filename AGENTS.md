@@ -2,26 +2,47 @@
 
 ## Project Structure & Module Organization
 
-This project directory currently has no application code, tests, assets, or build configuration. Establish the structure alongside the first implementation and update this guide to match it. Group source files by feature, keep tests near the code they exercise or in a dedicated test directory, and give shared assets a clearly named location. These are organizational recommendations; no directory layout is established yet.
+Diana is a native macOS reminder app built as a Swift package with no external dependencies.
 
-Use the project-level `.Codex/` directory for project-specific agent definitions, context, memory, and settings. Do not store this project's configuration in `~/.Codex/`.
+- `Sources/DianaApp/`: SwiftUI views, desktop panel, rendering, speech, and notifications.
+- `Sources/DianaApp/Resources/Models/`: the six runtime USDZ character animations.
+- `Sources/DianaCore/`: models, recurrence, persistence, conflict detection, voice parsing, and the Ollama client.
+- `Tests/DianaCoreTests/`: unit tests for scheduling, persistence, speech text, conflicts, and confirmation rules.
+- `Tests/DianaAppTests/`: wake listening and microphone lifecycle tests using simulated input.
+- `Config/`: application metadata and icon.
+- `scripts/`: app packaging and icon generation.
+- `assets/diana/`: asset documentation and clip timing (`animations.json`). Original Blender and texture working files stay local.
+
+Keep logic that does not need AppKit or SwiftUI in `DianaCore` so it stays unit-testable.
+
+Use the project-level `.Codex/` directory for project-specific agent definitions, context, memory, and settings. It is ignored by Git. Do not store this project's configuration in `~/.Codex/`.
 
 ## Build, Test, and Development Commands
 
-No build, test, or local development commands are configured. When introducing the application toolchain, document the exact setup, run, build, and test commands in a root `README.md`. Include required tool versions and environment setup. Verify each documented command from the project root before submitting it.
+Requires macOS 15 or later and Xcode 16 or later. Run from the project root:
+
+```sh
+swift test
+scripts/build.sh debug
+scripts/build.sh
+open build/Diana.app
+xcrun swift-format lint --strict --recursive Sources Tests Package.swift scripts/create-icon.swift
+```
+
+Set `DIANA_SIGN_IDENTITY`, or put the identity in `.Codex/signing-identity`, to keep microphone and speech permissions across rebuilds. Without it, the build is ad-hoc signed. Keep `README.md` in sync when commands change.
 
 ## Coding Style & Naming Conventions
 
-No language, formatter, or linter has been selected. Follow the idiomatic conventions of the chosen language and commit formatter or linter configuration with the initial implementation. Keep indentation consistent within each file, use descriptive names, and avoid unrelated formatting changes. Once conventions exist, follow neighboring code.
+Swift with four-space indentation, formatted by the committed `.swift-format` configuration; the lint command above must pass. Use descriptive names, keep indentation consistent, and avoid unrelated formatting changes. Follow neighboring code.
 
 ## Testing Guidelines
 
-No testing framework or coverage threshold is configured. Add automated tests with executable behavior, covering normal operation and relevant failure cases. Name tests after the behavior they verify and follow the selected framework's discovery rules. Document how to run the suite and report any checks that could not be completed.
+Tests use Swift Testing (`import Testing`, `@Test`, `#expect`) and run with `swift test`. Cover normal operation and relevant failure cases, and name tests after the behavior they verify. Microphone and speech behavior is tested with simulated input; do not depend on real audio hardware. Report any checks that could not be run.
 
 ## Commit & Pull Request Guidelines
 
-No Git history is available to establish existing commit conventions. Use concise, imperative commit subjects, such as `Add reminder scheduling`. Keep changes focused. Pull requests should explain the change, describe validation, link related issues when applicable, and include screenshots for visible interface changes.
+Use concise, imperative commit subjects, such as `Improve Hey Diana microphone lifecycle`. Keep changes focused. Pull requests should explain the change, describe validation, link related issues when applicable, and include screenshots for visible interface changes. See `CONTRIBUTING.md` for the contribution process and license terms.
 
 ## Security & Configuration
 
-Keep secrets and local credentials out of version control. Document required configuration using placeholders, and exclude generated output and machine-specific files when adding `.gitignore`.
+Keep secrets, signing identities, and local credentials out of version control; `.gitignore` already excludes common key, certificate, and provisioning files. Do not commit reminder data (`reminders.json`), backups, recordings, or logs. Only commit assets you have the rights to distribute under the project license.
